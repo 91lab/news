@@ -1,87 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Dainik Sambad (News)</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f0f0f0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            padding: 10px;
-            background: #fff;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            z-index: 1;
-        }
-
-        .controls {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 5px;
-        }
-
-        button,
-        select,
-        input[type="date"] {
-            padding: 5px;
-        }
-
-        #image-container {
-            flex: 1;
-            position: relative;
-            background: #fff;
-            overflow: hidden;
-        }
-
-        #loading-overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(255, 255, 255, 0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            font-weight: bold;
-            z-index: 10;
-        }
-
-        pinch-zoom {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-
-        pinch-zoom img {
-            width: 100%;
-            height: auto;
-            display: block;
-            user-select: none;
-            -webkit-user-drag: none;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Dainik Sambad (News)</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-family: Arial, sans-serif;
+        background: #f0f0f0;
+    }
+    .newspaper {
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+    .header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding: 10px;
+        background: #fff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: 10px;
+    }
+    button, select, input {
+        padding: 6px 12px;
+        font-size: 14px;
+    }
+    #image-container {
+        width: 100%;
+        flex: 1;
+        overflow: hidden;
+        position: relative;
+        margin-top: 10px;
+        cursor: grab;
+        background-color: #fff;
+        touch-action: none;
+    }
+    #zoom-image {
+        position: absolute;
+        top: 0;
+        left: 0;
+        transform-origin: top left;
+        transition: transform 0.05s ease;
+        user-select: none;
+        max-width: none;
+        width: 100%;
+    }
+    #loading-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+        z-index: 10;
+    }
+</style>
 </head>
-
 <body>
+<div class="newspaper">
     <div class="header">
         <h2 id="page-title"></h2>
         <div class="controls">
@@ -93,95 +88,182 @@
 
     <div id="image-container">
         <div id="loading-overlay">Loading...</div>
-        <pinch-zoom>
-            <img id="zoom-image" src="" alt="Newspaper page">
-        </pinch-zoom>
+        <img id="zoom-image" src="" alt="Loading...">
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/pinch-zoom-element@2.0.0/dist/pinch-zoom.min.js"></script>
-    <script>
-        const img = document.getElementById("zoom-image");
-        const title = document.getElementById("page-title");
-        const pageSelect = document.getElementById("page-select");
-        const dateInput = document.getElementById("date-select");
-        const loadingOverlay = document.getElementById("loading-overlay");
-        const resetBtn = document.getElementById("reset-btn");
-        const pinchZoomEl = document.querySelector("pinch-zoom");
+<script>
+const img = document.getElementById("zoom-image");
+const container = document.getElementById("image-container");
+const title = document.getElementById("page-title");
+const pageSelect = document.getElementById("page-select");
+const loadingOverlay = document.getElementById("loading-overlay");
+const resetBtn = document.getElementById("reset-btn");
+const dateInput = document.getElementById("date-select");
 
-        // Fill page selector
-        for (let i = 1; i <= 10; i++) {
-            const option = document.createElement("option");
-            option.value = i;
-            option.textContent = `Page ${i}`;
-            pageSelect.appendChild(option);
-        }
+// Fill page selector
+for (let i = 1; i <= 10; i++) {
+    const option = document.createElement("option");
+    option.value = i;
+    option.textContent = `Page ${i}`;
+    pageSelect.appendChild(option);
+}
 
-        // Default date = yesterday
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        dateInput.valueAsDate = yesterday;
+// Set yesterday as default date
+let yesterday = new Date();
+yesterday.setDate(yesterday.getDate() - 1);
+dateInput.valueAsDate = yesterday;
 
-        let currentPage = 1;
-        let dateString = getDateString(yesterday);
-        let displayDate = getDisplayDate(yesterday);
+let dd = String(yesterday.getDate()).padStart(2, '0');
+let mm = String(yesterday.getMonth() + 1).padStart(2, '0');
+let yyyy = yesterday.getFullYear();
+let dateString = `${dd}${mm}${yyyy}`;
+let displayDate = `${dd}-${mm}-${yyyy}`;
 
-        function getDateString(d) {
-            const dd = String(d.getDate()).padStart(2, '0');
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const yyyy = d.getFullYear();
-            return `${dd}${mm}${yyyy}`;
-        }
+let scale = 1, minScale = 1, maxScale = 5;
+let posX = 0, posY = 0;
+let startX = 0, startY = 0;
+let isDragging = false;
+let currentPage = 1;
 
-        function getDisplayDate(d) {
-            const dd = String(d.getDate()).padStart(2, '0');
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const yyyy = d.getFullYear();
-            return `${dd}-${mm}-${yyyy}`;
-        }
+function getImgUrl() {
+    return `https://dainiksambad.net//epaperimages/${dateString}//page-${currentPage}.jpg`;
+}
 
-        function getImgUrl() {
-            return `https://dainiksambad.net//epaperimages/${dateString}//page-${currentPage}.jpg`;
-        }
+function showLoading(show) {
+    loadingOverlay.style.display = show ? "flex" : "none";
+}
 
-        function showLoading(show) {
-            loadingOverlay.style.display = show ? "flex" : "none";
-        }
+function loadImage() {
+    showLoading(true);
+    img.src = getImgUrl();
+    title.textContent = `Dainik Sambad`;
+}
 
-        function loadImage() {
-            showLoading(true);
-            img.src = getImgUrl();
-            title.textContent = `Dainik Sambad`;
-        }
+img.onload = () => {
+    resetZoom();
+    showLoading(false);
+};
 
-        img.onload = () => {
-            // Reset zoom & position
-            pinchZoomEl.scale = 1;
-            pinchZoomEl.x = 0;
-            pinchZoomEl.y = 0;
-            showLoading(false);
-        };
+pageSelect.addEventListener("change", () => {
+    currentPage = parseInt(pageSelect.value, 10);
+    loadImage();
+});
 
-        resetBtn.addEventListener("click", () => {
-            pinchZoomEl.scale = 1;
-            pinchZoomEl.x = 0;
-            pinchZoomEl.y = 0;
-        });
+dateInput.addEventListener("change", () => {
+    const selectedDate = new Date(dateInput.value);
+    const d = String(selectedDate.getDate()).padStart(2, '0');
+    const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const y = selectedDate.getFullYear();
+    dateString = `${d}${m}${y}`;
+    displayDate = `${d}-${m}-${y}`;
+    currentPage = 1;
+    pageSelect.value = 1;
+    loadImage();
+});
 
-        pageSelect.addEventListener("change", () => {
-            currentPage = parseInt(pageSelect.value, 10);
-            loadImage();
-        });
+resetBtn.addEventListener("click", resetZoom);
 
-        dateInput.addEventListener("change", () => {
-            const selectedDate = new Date(dateInput.value);
-            dateString = getDateString(selectedDate);
-            displayDate = getDisplayDate(selectedDate);
-            loadImage();
-        });
+function updateTransform() {
+    img.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`;
+}
 
-        // Initial load
-        loadImage();
-    </script>
+function resetZoom() {
+    scale = 1;
+    posX = posY = 0;
+    updateTransform();
+}
+
+// Mouse wheel zoom toward pointer
+container.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const rect = container.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+    const newScale = Math.min(Math.max(scale * zoomFactor, minScale), maxScale);
+
+    // Keep point under cursor fixed
+    posX -= (mouseX - posX) * (newScale / scale - 1);
+    posY -= (mouseY - posY) * (newScale / scale - 1);
+
+    scale = newScale;
+    updateTransform();
+});
+
+// Mouse drag
+container.addEventListener("mousedown", (e) => {
+    isDragging = true;
+    container.style.cursor = "grabbing";
+    startX = e.clientX - posX;
+    startY = e.clientY - posY;
+});
+container.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+    posX = e.clientX - startX;
+    posY = e.clientY - startY;
+    updateTransform();
+});
+container.addEventListener("mouseup", () => {
+    isDragging = false;
+    container.style.cursor = "grab";
+});
+container.addEventListener("mouseleave", () => {
+    isDragging = false;
+    container.style.cursor = "grab";
+});
+
+// Touch pinch zoom
+let lastDist = 0;
+let lastTouchMid = { x: 0, y: 0 };
+
+container.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        lastDist = Math.hypot(dx, dy);
+
+        const rect = container.getBoundingClientRect();
+        lastTouchMid.x = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+        lastTouchMid.y = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+    } else if (e.touches.length === 1) {
+        startX = e.touches[0].clientX - posX;
+        startY = e.touches[0].clientY - posY;
+    }
+}, { passive: false });
+
+container.addEventListener("touchmove", (e) => {
+    if (e.touches.length === 2) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.hypot(dx, dy);
+
+        const rect = container.getBoundingClientRect();
+        const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+        const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+
+        const zoomFactor = dist / lastDist;
+        let newScale = Math.min(Math.max(scale * zoomFactor, minScale), maxScale);
+
+        // Keep midpoint fixed
+        posX -= (midX - posX) * (newScale / scale - 1);
+        posY -= (midY - posY) * (newScale / scale - 1);
+
+        scale = newScale;
+        lastDist = dist;
+        lastTouchMid = { x: midX, y: midY };
+        updateTransform();
+    } else if (e.touches.length === 1) {
+        posX = e.touches[0].clientX - startX;
+        posY = e.touches[0].clientY - startY;
+        updateTransform();
+    }
+}, { passive: false });
+
+// Initial load
+loadImage();
+</script>
 </body>
-
 </html>
