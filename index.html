@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Dainik Sambad (News)</title>
+<title>News</title>
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -78,28 +78,22 @@
 <body>
 <div class="newspaper">
     <div class="header">
-        <h2 id="page-title"></h2>
+        <h2 id="page-title">Dainik Sambad</h2>
         <div class="controls">
             <input type="date" id="date-select">
             <select id="page-select"></select>
-            <button id="reset-btn">Reset</button>
         </div>
     </div>
 
     <div id="image-container">
-        <div id="loading-overlay">Loading...</div>
-        <img id="zoom-image" src="" alt="Loading...">
+        <iframe width="100%" height="100%" style="border:none;" id="pdf-source"></iframe>
     </div>
 </div>
 
 <script>
-const img = document.getElementById("zoom-image");
-const container = document.getElementById("image-container");
-const title = document.getElementById("page-title");
 const pageSelect = document.getElementById("page-select");
-const loadingOverlay = document.getElementById("loading-overlay");
-const resetBtn = document.getElementById("reset-btn");
 const dateInput = document.getElementById("date-select");
+const pdfSource = document.getElementById("pdf-source");
 
 // Fill page selector
 for (let i = 1; i <= 10; i++) {
@@ -126,28 +120,13 @@ let startX = 0, startY = 0;
 let isDragging = false;
 let currentPage = 1;
 
-function getImgUrl() {
-    return `https://dainiksambad.net//epaperimages/${dateString}//page-${currentPage}.jpg`;
+function loadPDF() {
+    pdfSource.src = `https://dainiksambad.net/epaperimages/${dateString}/PAGE-${currentPage}.PDF`;
 }
-
-function showLoading(show) {
-    loadingOverlay.style.display = show ? "flex" : "none";
-}
-
-function loadImage() {
-    showLoading(true);
-    img.src = getImgUrl();
-    title.textContent = `Dainik Sambad`;
-}
-
-img.onload = () => {
-    resetZoom();
-    showLoading(false);
-};
 
 pageSelect.addEventListener("change", () => {
     currentPage = parseInt(pageSelect.value, 10);
-    loadImage();
+    loadPDF();
 });
 
 dateInput.addEventListener("change", () => {
@@ -159,111 +138,11 @@ dateInput.addEventListener("change", () => {
     displayDate = `${d}-${m}-${y}`;
     currentPage = 1;
     pageSelect.value = 1;
-    loadImage();
+    loadPDF();
 });
-
-resetBtn.addEventListener("click", resetZoom);
-
-function updateTransform() {
-    img.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`;
-}
-
-function resetZoom() {
-    scale = 1;
-    posX = posY = 0;
-    updateTransform();
-}
-
-// Mouse wheel zoom toward pointer
-container.addEventListener("wheel", (e) => {
-    e.preventDefault();
-    const rect = container.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
-    const newScale = Math.min(Math.max(scale * zoomFactor, minScale), maxScale);
-
-    // Keep point under cursor fixed
-    posX -= (mouseX - posX) * (newScale / scale - 1);
-    posY -= (mouseY - posY) * (newScale / scale - 1);
-
-    scale = newScale;
-    updateTransform();
-});
-
-// Mouse drag
-container.addEventListener("mousedown", (e) => {
-    isDragging = true;
-    container.style.cursor = "grabbing";
-    startX = e.clientX - posX;
-    startY = e.clientY - posY;
-});
-container.addEventListener("mousemove", (e) => {
-    if (!isDragging) return;
-    posX = e.clientX - startX;
-    posY = e.clientY - startY;
-    updateTransform();
-});
-container.addEventListener("mouseup", () => {
-    isDragging = false;
-    container.style.cursor = "grab";
-});
-container.addEventListener("mouseleave", () => {
-    isDragging = false;
-    container.style.cursor = "grab";
-});
-
-// Touch pinch zoom
-let lastDist = 0;
-let lastTouchMid = { x: 0, y: 0 };
-
-container.addEventListener("touchstart", (e) => {
-    if (e.touches.length === 2) {
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
-        lastDist = Math.hypot(dx, dy);
-
-        const rect = container.getBoundingClientRect();
-        lastTouchMid.x = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
-        lastTouchMid.y = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
-    } else if (e.touches.length === 1) {
-        startX = e.touches[0].clientX - posX;
-        startY = e.touches[0].clientY - posY;
-    }
-}, { passive: false });
-
-container.addEventListener("touchmove", (e) => {
-    if (e.touches.length === 2) {
-        e.preventDefault();
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
-        const dist = Math.hypot(dx, dy);
-
-        const rect = container.getBoundingClientRect();
-        const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
-        const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
-
-        const zoomFactor = dist / lastDist;
-        let newScale = Math.min(Math.max(scale * zoomFactor, minScale), maxScale);
-
-        // Keep midpoint fixed
-        posX -= (midX - posX) * (newScale / scale - 1);
-        posY -= (midY - posY) * (newScale / scale - 1);
-
-        scale = newScale;
-        lastDist = dist;
-        lastTouchMid = { x: midX, y: midY };
-        updateTransform();
-    } else if (e.touches.length === 1) {
-        posX = e.touches[0].clientX - startX;
-        posY = e.touches[0].clientY - startY;
-        updateTransform();
-    }
-}, { passive: false });
 
 // Initial load
-loadImage();
+loadPDF();
 </script>
 </body>
 </html>
